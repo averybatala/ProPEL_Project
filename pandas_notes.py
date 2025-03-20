@@ -1,5 +1,17 @@
 import pandas as pd
 
+#df = pd.read_csv("December_2024.csv")
+
+#df = df[df["PTS"] > 100]
+
+#df.info()
+
+#df.to_csv('December_2024_modified.csv', index=False)
+
+#1. Load January_2025.csv into a dataframe
+#2. Filter to Attend. > 1000 
+#3. Filter to PTS < 100
+#4. Save as Janurary_2025_modified.csv
 
 # df_november = pd.read_csv("nba_data/November_2024.csv")
 # df_november['Notes'].fillna("No notes", inplace=True)
@@ -14,9 +26,3 @@ import pandas as pd
 
 # df_combined.to_csv('concat_nov_oct.csv', index=False)
 
-#1. read and save 2 CSV files to variables: January_2025 and February_2025
-#2. create a df_combined and combine the 2 dataframes you created in step 1
-#3. Convert the date column into dates
-#4. sort by ascending=False for dates
-#5. reset row index
-#6. save your combined csv with an appropriate name
