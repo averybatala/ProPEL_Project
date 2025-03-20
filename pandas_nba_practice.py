@@ -11,4 +11,8 @@ import pandas as pd
 #1. Load January_2025.csv into a dataframe
 #2. Filter to Attend. > 1000 
 #3. Filter to PTS < 100
-#4. Save as January_2025_modified.csv
+#4. Save as Janurary_2025_modified.csv
+df = pd.read_csv("January_2025.csv")
+df = df[df["Attend."] > 1000]
+df = df[df["PTS"] > 100]
+df.to_csv('January_2025_modified.csv', index=False)
