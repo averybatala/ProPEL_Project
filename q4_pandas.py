@@ -1,0 +1,1 @@
+#How many games were played at Crypto.com arena?
