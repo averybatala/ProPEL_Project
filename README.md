@@ -188,23 +188,23 @@ for index, fruit in enumerate(fruits):
 
 # Pandas Notes
 ```python
-#import pandas as pd
+import pandas as pd
 ```
 ###### Imports the pandas library, which is used for data manipulation and analysis.
 ```python
-#df = pd.read_csv("December_2024.csv")
+df = pd.read_csv("December_2024.csv")
 ```
 ###### Reads the CSV file `December_2024.csv` into a pandas DataFrame called `df`.
 ```python
-#df = df[df["PTS"] > 100]
+df = df[df["PTS"] > 100]
 ```
 ###### Filters the DataFrame `df` to include only rows where the `PTS` column is greater than 100.
 ```python
-#df.info()
+df.info()
 ```
 ###### Prints a concise summary of the DataFrame `df`, showing the number of non-null entries and data types of each column.
 ```python
-#df.to_csv('December_2024_modified.csv', index=False)
+df.to_csv('December_2024_modified.csv', index=False)
 ```
 ###### Saves the filtered DataFrame `df` (with rows where PTS > 100) to a new CSV file `December_2024_modified.csv`, excluding the index column.
 ```python
@@ -247,10 +247,3 @@ df_combined.reset_index(drop=True, inplace=True)
 df_combined.to_csv('concat_nov_oct.csv', index=False)
 ```
 ###### Saves the `df_combined` DataFrame (which contains data from both November and October 2024) into a new CSV file named `concat_nov_oct.csv`, without including the index column.
-
-## FOR 3/26/25:
-### Do these all in 1 python file with 4 separate dataframes
-#### Which visitor team scored the most points?
-#### Which home team scored the most points? 
-#### Which stadium had the highest attendance?
-#### How many games were played at Crypto.com arena? 
