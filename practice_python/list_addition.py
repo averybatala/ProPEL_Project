@@ -5,3 +5,5 @@ for x in l1:
     sum = sum + x
 
 print(sum)
+
+print(l1)
