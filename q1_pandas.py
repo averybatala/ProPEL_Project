@@ -16,5 +16,6 @@ df_all = pd.concat(df_list, ignore_index=True)
 
 max_value = df_all['PTS_Visitor'].max()
 row_with_max = df_all[df_all['PTS_Visitor'] == max_value]
+print("The team with the highest amount of visitor points is:")
 print(row_with_max)
 

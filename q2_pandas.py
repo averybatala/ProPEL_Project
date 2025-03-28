@@ -13,5 +13,6 @@ df_all = pd.concat(df_list, ignore_index=True)
 df_all['PTS_Home/Neutral'].fillna(0)
 max_value = df_all['PTS_Home/Neutral'].astype(float).max()
 row_with_max = df_all[df_all['PTS_Home/Neutral'] == max_value]
+print("The team with the highest home points is: ")
 print(row_with_max)
  
