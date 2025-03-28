@@ -4,6 +4,7 @@
 import pandas as pd
 import glob
 
+
 # Use glob to find all CSV files in the directory
 csv_files = glob.glob("nba_data/*.csv")
 
