@@ -1,10 +1,33 @@
 import pandas as pd
 import glob
 
-# Find all the csv files in the folder
+thisdict = {
+  "O": "nba_data/October_2024.csv",
+  "N": "nba_data/November_2024.csv",
+  #and so on, fill in the rest
+}
+
+#First ask the user what months they want to look at, or all if they want to see all of it
+timeframe = input("What months of data do you want to look at: ")
+
+#create all csv files
 csv_files = glob.glob("nba_data/*.csv")
 # Read all CSV files into a list of DataFrames
 df_list = [pd.read_csv(file) for file in csv_files]
+
+#Set up in if statement saying 
+if timeframe == "all":
+   pass
+else:
+    pass
+    #df_list.clear()
+    #first, split up our string character by character into a list
+    #example: df_list = list(mystring)
+    #so, "OND" would become ["O", "N", "D"]
+    #Then we need to convert your list that you created into the values
+    #df_list = [mydict[key] for key in mydict]
+
+
 # Concatenate all DataFrames into a single DataFrame
 df_all = pd.concat(df_list, ignore_index=True)
 
