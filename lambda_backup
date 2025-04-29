@@ -1,0 +1,73 @@
+import boto3
+import csv
+import json
+import pandas as pd
+from io import StringIO
+
+
+def lambda_handler(event, context):
+    s3 = boto3.client("s3")
+    bucket = "nba-csv-bat"
+
+    try:
+        # 1. List all CSV files in the bucket
+        response = s3.list_objects_v2(Bucket=bucket)
+        csv_files = [
+            obj["Key"]
+            for obj in response.get("Contents", [])
+            if obj["Key"].endswith(".csv")
+        ]
+
+        if not csv_files:
+            print(f"statusCode: 404, body: No CSV files found in bucket")
+
+        # 2. Load and concatenate all CSVs
+        dfs = []
+
+        for file_key in csv_files:
+            obj = s3.get_object(Bucket=bucket, Key=file_key)
+            csv_data = obj["Body"].read().decode("utf-8")
+            df = pd.read_csv(StringIO(csv_data))
+            dfs.append(df)
+
+        df_all = pd.concat(dfs, ignore_index=True)
+
+        # 3. Save back to S3 if needed (or process further)
+        output_key = 'combined_nba_data.csv'
+        csv_buffer = StringIO()
+        df_all.to_csv(csv_buffer, index=False)
+        
+        print("preparing to place big csv in bucket")
+        s3.put_object(
+            Bucket=bucket,
+            Key=output_key,
+            Body=csv_buffer.getvalue()
+        )
+        print(f"saved csv to {bucket}")
+
+        # return {
+        #     "statusCode": 200,
+        #     "body": f"Successfully combined {len(csv_files)} files into large csv",
+        #     "row_count": len(df_all),
+        # }
+    except Exception as e:
+        print(f"Error: {str(e)}")
+
+    if event.get('question') == 'q1':
+        max_value = df_all['PTS_Visitor'].max()
+        row_with_max = df_all[df_all['PTS_Visitor'] == max_value]
+        print("The team with the highest amount of visitor points is:")
+        print(row_with_max)
+    elif event.get('question') == 'q2':
+        max_value = df_all['PTS_Home'].astype(float).max()
+        row_with_max = df_all[df_all['PTS_Home'] == max_value]
+        print("The team with the highest home points is: ")
+        print(row_with_max)
+    elif event.get('question') == 'q3':
+        max_attendance = df_all['Attend.'].max()
+        df_max = df_all[df_all['Attend.'] == max_attendance]
+        print("The team with the highest attendence total")
+        print(df_max["Arena"])
+    else:
+        print("This many games were played at crypto.com arena")
+        print(len(df_all[df_all["Arena"]=="Crypto.com Arena"]))
