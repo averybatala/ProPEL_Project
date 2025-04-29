@@ -1,0 +1,77 @@
+function s3_csv_button_shortcode() {
+    ob_start(); ?>
+    
+    <button id="loadCsvBtn" class="csv-button">Load CSV Data</button>
+    <div id="csvResults"></div>
+    
+    <script>
+    document.getElementById('loadCsvBtn').addEventListener('click', function() {
+        this.disabled = true;
+        this.textContent = 'Loading...';
+        
+        // Public S3 CSV URL ()
+        const csvUrl =  "https://nba-csv-bat.s3.us-east-1.amazonaws.com/December_2024.csv?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=ASIA3O2ZQ3N4KCPSZF43%2F20250429%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20250429T201124Z&X-Amz-Expires=604800&X-Amz-SignedHeaders=host&X-Amz-Security-Token=IQoJb3JpZ2luX2VjEP3%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXVzLWVhc3QtMSJHMEUCIQDmMt9jkZK73SAei0OJ%2BFi5JJCPIABDowiruiSDhJWCxwIgfp%2BtdrO7KIVpiP5DNgMOOAQqYbsIdkShSbgh5h%2B1jtEq6AIIlf%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FARABGgw3ODc3NzczNzkxOTIiDByduhvnOuj3b7C5jyq8Avgh34L9AopN5UdMM%2Fyv2OUJaVxZA8gBkcoHscY7AuLLXfWtsQnWMy6PwltmyXXa73O5m%2FJviwxaNo%2Byfuycl2bkvd5NLPJZ1Obe0XcJi26ZwqUz8xsQv%2Fz0f7d8DKpL3HQCBGrjsRl7ybbXpMc3kB%2BCrziZk3MRlMsaOWnyqtYGhyEBtP0ubXHsK2KrmNGwbEdVTApqNUmryMunDH5bfg71IWo3kE%2BjTmXHHn75tjsPj4pNCLipVURSCsbGVSe6iPRmA5Ux%2BXmR9rK%2BO%2BnAZWo9n7aO3rzbEE668fwWaS5GZSmVamYsvg3f0ry%2FIX2ftPevVYBG6FcQKhkknVYczRLnY2kto%2BCVg3aNcmNYzdfYlf%2Bj5gFWJ9A6o0velZ30dPi22fj%2FupV2TquAuV4XC4Vk9d536HrzfDg1ByIwq%2BvDwAY6rQJK8Wdc8fNdTOGR00%2F2BJlJsVTQ7NYIRxdRvqyfAeRpQi4f8ncTK4f%2FNHPGQaRg2yh91qPtf08IEhZ2Mzu2JQKGgr2wSqAdLfQiR1Qn8db%2FuhhRM5mFQVoULLaTuaRU8PwqhAWexktKurULz0YENk0eJZCWHKBFyCWo%2FWQ68fO2QHw0QLhn6eeaayX4O0NfMRq3XRfhRDhj6aq1n8GfMK7A3H0AMkcQUz9K%2BDcYYUyovyyO49uKyV9Nbq2e%2BsgfH38xsNz8YbzzoliVR69ujUPO%2BC9p%2BmZtaiuKiFWhfW5ySBReRrRMQc7sn9BlRv2M7eoVzg9ZA%2FmaTmy0LVLDRUS6n0ci3%2F2FBDDk%2FgkkTQbE5A88Xy36T9Yo35EOZF7%2BfWPOLkNnJBNxgNr19UpV&X-Amz-Signature=c24670d724e454d6593e7b93ef69d027066a5a76e47895f099450049283b6f8e"
+        
+        // Fetch and parse CSV directly
+        fetch(csvUrl)
+            .then(response => response.text())
+            .then(csvText => {
+                const rows = csvText.split('\n').filter(row => row.trim() !== '');
+                let html = '<table class="csv-table">';
+                
+                rows.forEach((row, index) => {
+                    const cells = row.split(',');
+                    html += '<tr>';
+                    cells.forEach(cell => {
+                        if (index === 0) {
+                            html += `<th>${cell.trim()}</th>`;
+                        } else {
+                            html += `<td>${cell.trim()}</td>`;
+                        }
+                    });
+                    html += '</tr>';
+                });
+                
+                html += '</table>';
+                document.getElementById('csvResults').innerHTML = html;
+            })
+            .catch(error => {
+                document.getElementById('csvResults').innerHTML = `Error loading data: ${error.message}`;
+            })
+            .finally(() => {
+                this.textContent = 'Reload Data';
+                this.disabled = false;
+            });
+    });
+    </script>
+    
+    <style>
+    .csv-button {
+        padding: 10px 20px;
+        background: #21759b;
+        color: white;
+        border: none;
+        cursor: pointer;
+        border-radius: 4px;
+        margin: 10px 0;
+    }
+    .csv-button:hover { background: #1e6385; }
+    .csv-table { 
+        width: 100%; 
+        border-collapse: collapse;
+        margin-top: 15px;
+    }
+    .csv-table th, .csv-table td {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        text-align: left;
+    }
+    .csv-table tr:nth-child(even) {
+        background-color: #f9f9f9;
+    }
+    </style>
+    
+    <?php
+    return ob_get_clean();
+}
+add_shortcode('s3_csv_button', 's3_csv_button_shortcode');
