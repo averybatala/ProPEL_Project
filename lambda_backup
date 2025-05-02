@@ -1,73 +1,202 @@
 import boto3
-import csv
-import json
 import pandas as pd
 from io import StringIO
+import json
+from datetime import datetime
+import logging
+
+
+# Configure logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 
 def lambda_handler(event, context):
-    s3 = boto3.client("s3")
-    bucket = "nba-csv-bat"
+   try:
+       logger.info("Lambda function started")
+       logger.info(f"Event received: {json.dumps(event)}")
+      
+       s3 = boto3.client("s3")
+       bucket = "nba-csv-bat"
+      
+       # Process parameters from API Gateway
+       params = event.get('queryStringParameters', {})
+       question = params.get('question', '').strip().lower()
+       months = params.get('months', None)
 
-    try:
-        # 1. List all CSV files in the bucket
-        response = s3.list_objects_v2(Bucket=bucket)
-        csv_files = [
-            obj["Key"]
-            for obj in response.get("Contents", [])
-            if obj["Key"].endswith(".csv")
-        ]
 
-        if not csv_files:
-            print(f"statusCode: 404, body: No CSV files found in bucket")
+       logger.info(f"Processing request - question: {question}, months: {months}")
 
-        # 2. Load and concatenate all CSVs
-        dfs = []
 
-        for file_key in csv_files:
-            obj = s3.get_object(Bucket=bucket, Key=file_key)
-            csv_data = obj["Body"].read().decode("utf-8")
-            df = pd.read_csv(StringIO(csv_data))
-            dfs.append(df)
+       # If no months specified, return error (since we now require months)
+       if not months:
+           return {
+               "statusCode": 400,
+               "headers": {
+                   "Content-Type": "application/json",
+                   "Access-Control-Allow-Origin": "*"
+               },
+               "body": json.dumps({"error": "Please specify months (e.g., months=10-2024&months=11-2024)"})
+           }
 
-        df_all = pd.concat(dfs, ignore_index=True)
 
-        # 3. Save back to S3 if needed (or process further)
-        output_key = 'combined_nba_data.csv'
-        csv_buffer = StringIO()
-        df_all.to_csv(csv_buffer, index=False)
-        
-        print("preparing to place big csv in bucket")
-        s3.put_object(
-            Bucket=bucket,
-            Key=output_key,
-            Body=csv_buffer.getvalue()
-        )
-        print(f"saved csv to {bucket}")
+       # Parse requested months (handle both single & multiple values)
+       if isinstance(months, str):
+           requested_months = [m.strip() for m in months.split(',')]
+       elif isinstance(months, list):
+           requested_months = [m.strip() for m in months]
+       else:
+           requested_months = []
 
-        # return {
-        #     "statusCode": 200,
-        #     "body": f"Successfully combined {len(csv_files)} files into large csv",
-        #     "row_count": len(df_all),
-        # }
-    except Exception as e:
-        print(f"Error: {str(e)}")
 
-    if event.get('question') == 'q1':
-        max_value = df_all['PTS_Visitor'].max()
-        row_with_max = df_all[df_all['PTS_Visitor'] == max_value]
-        print("The team with the highest amount of visitor points is:")
-        print(row_with_max)
-    elif event.get('question') == 'q2':
-        max_value = df_all['PTS_Home'].astype(float).max()
-        row_with_max = df_all[df_all['PTS_Home'] == max_value]
-        print("The team with the highest home points is: ")
-        print(row_with_max)
-    elif event.get('question') == 'q3':
-        max_attendance = df_all['Attend.'].max()
-        df_max = df_all[df_all['Attend.'] == max_attendance]
-        print("The team with the highest attendence total")
-        print(df_max["Arena"])
-    else:
-        print("This many games were played at crypto.com arena")
-        print(len(df_all[df_all["Arena"]=="Crypto.com Arena"]))
+       # Convert to (month, year) tuples for matching
+       month_year_tuples = []
+       for month_str in requested_months:
+           try:
+               month, year = map(int, month_str.split('-'))
+               month_year_tuples.append((month, year))
+           except (ValueError, AttributeError):
+               logger.warning(f"Invalid month format: {month_str}")
+               continue
+
+
+       if not month_year_tuples:
+           return {
+               "statusCode": 400,
+               "headers": {
+                   "Content-Type": "application/json",
+                   "Access-Control-Allow-Origin": "*"
+               },
+               "body": json.dumps({"error": "No valid months provided (use format MM-YYYY)"})
+           }
+
+
+       # List all CSV files in S3
+       response = s3.list_objects_v2(Bucket=bucket)
+       csv_files = [obj["Key"] for obj in response.get("Contents", [])
+                  if obj["Key"].endswith(".csv")]
+
+
+       if not csv_files:
+           logger.error("No CSV files found in bucket")
+           return {
+               "statusCode": 404,
+               "headers": {
+                   "Content-Type": "application/json",
+                   "Access-Control-Allow-Origin": "*"
+               },
+               "body": json.dumps({"error": "No CSV files found"})
+           }
+
+
+       # Only load CSVs that match requested months
+       dfs = []
+       for file_key in csv_files:
+           # Extract month and year from filename (assuming format: "NBA_YYYY_MM.csv")
+           try:
+               filename_parts = file_key.split('_')
+               year = int(filename_parts[1])
+               month = int(filename_parts[2].split('.')[0])
+              
+               # Check if this file matches any requested month
+               if (month, year) in month_year_tuples:
+                   logger.info(f"Loading file: {file_key}")
+                   obj = s3.get_object(Bucket=bucket, Key=file_key)
+                   df = pd.read_csv(StringIO(obj["Body"].read().decode("utf-8")))
+                   dfs.append(df)
+           except (IndexError, ValueError):
+               logger.warning(f"Could not parse month/year from filename: {file_key}")
+               continue
+
+
+       if not dfs:
+           return {
+               "statusCode": 404,
+               "headers": {
+                   "Content-Type": "application/json",
+                   "Access-Control-Allow-Origin": "*"
+               },
+               "body": json.dumps({"error": "No data found for specified months"})
+           }
+
+
+       df_all = pd.concat(dfs, ignore_index=True)
+       logger.info(f"Combined DataFrame shape: {df_all.shape}")
+
+
+       # Handle question types
+       if question == 'full':
+           logger.info("Generating full CSV output")
+           csv_buffer = StringIO()
+           df_all.to_csv(csv_buffer, index=False)
+           return {
+               "statusCode": 200,
+               "headers": {
+                   "Content-Type": "text/csv",
+                   "Access-Control-Allow-Origin": "*"
+               },
+               "body": csv_buffer.getvalue()
+           }
+       elif question == 'q1':
+           logger.info("Processing question 1 (max visitor points)")
+           max_visitor = df_all['PTS_Visitor'].max()
+           team_df = df_all[df_all['PTS_Visitor'] == max_visitor]
+          
+           if team_df.empty:
+               raise ValueError("No team found with max visitor points")
+              
+           team = team_df['Visitor/Neutral'].iloc[0]
+          
+           return {
+               "statusCode": 200,
+               "headers": {
+                   "Content-Type": "application/json",
+                   "Access-Control-Allow-Origin": "*"
+               },
+               "body": json.dumps({
+                   "answer": str(team),
+                   "max_value": float(max_visitor)
+               })
+           }
+       elif question == 'q2':
+           logger.info("Processing question 1 (max home points)")
+           max_home = df_all['PTS_Home'].max()
+           team_df = df_all[df_all['PTS_Home'] == max_home]
+          
+           if team_df.empty:
+               raise ValueError("No team found with max home points")
+              
+           team = team_df['Home/Neutral'].iloc[0]
+          
+           return {
+               "statusCode": 200,
+               "headers": {
+                   "Content-Type": "application/json",
+                   "Access-Control-Allow-Origin": "*"
+               },
+               "body": json.dumps({
+                   "answer": str(team),
+                   "max_value": float(max_home)
+               })
+           }
+      
+       logger.warning(f"Unrecognized question: {question}")
+       return {
+           "statusCode": 400,
+           "headers": {
+               "Content-Type": "application/json",
+               "Access-Control-Allow-Origin": "*"
+           },
+           "body": json.dumps({"error": "Question not recognized. Valid options are 'full' or 'q2'"})
+       }
+      
+   except Exception as e:
+       logger.error(f"Error in Lambda function: {str(e)}", exc_info=True)
+       return {
+           "statusCode": 500,
+           "headers": {
+               "Content-Type": "application/json",
+               "Access-Control-Allow-Origin": "*"
+           },
+           "body": json.dumps({"error": str(e)})
+       }
