@@ -1,4 +1,4 @@
-# Github usage instructions
+g# Github usage instructions
 For pushing and making changes to your github repo
 1. Use "git add ." to get your files ready to be pushed
 - Optional: Use "git add filename" to add individual files
